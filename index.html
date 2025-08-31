@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Philosophy Quiz</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+  <!-- Quiz Container -->
+  <div class="max-w-3xl mx-auto p-6">
+    <h1 class="text-3xl font-bold mb-4 text-center">Philosophy Quiz</h1>
+    <div id="quiz-container" class="bg-white shadow-lg rounded-lg p-6">
+      <div id="progress-bar" class="h-2 bg-blue-500 rounded mb-4" style="width:0%"></div>
+      <div id="question-container">
+        <h2 id="question" class="text-xl font-semibold mb-4"></h2>
+        <ul id="answer-buttons" class="space-y-2"></ul>
+      </div>
+      <div class="flex justify-between mt-4">
+        <button id="submit-btn" class="bg-blue-500 text-white px-4 py-2 rounded">Submit</button>
+        <button id="next-btn" class="bg-green-500 text-white px-4 py-2 rounded hidden">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Modal -->
+  <div id="results-modal" role="dialog" aria-modal="true" aria-labelledby="results-title" class="hidden fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
+    <div class="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full">
+      <h2 id="results-title" class="text-2xl font-bold mb-4">Quiz Complete!</h2>
+      <p id="score" class="mb-2"></p>
+      <p id="diagnostic" class="mb-2"></p>
+      <p id="philosophy-level" class="mb-4"></p>
+      <div id="study-guide" class="mb-4"></div>
+      <div class="flex justify-end space-x-2">
+        <button id="restart-btn" class="bg-blue-500 text-white px-4 py-2 rounded">Restart</button>
+        <button id="new-quiz-btn" class="bg-green-500 text-white px-4 py-2 rounded">New Quiz</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initial quiz data
+    const quizData = [
+      {
+        question: "Who is known as the father of modern philosophy?",
+        answerOptions: [
+          { answerText: "Immanuel Kant", isCorrect: false, rationale: "Kant is significant, but not considered the father of modern philosophy." },
+          { answerText: "René Descartes", isCorrect: true, rationale: "Descartes is widely regarded as the father of modern philosophy due to his foundational work." },
+          { answerText: "Aristotle", isCorrect: false, rationale: "Aristotle is a classical philosopher, predating modern philosophy." },
+          { answerText: "Plato", isCorrect: false, rationale: "Plato is a foundational ancient philosopher, but not the father of modern philosophy." }
+        ],
+        topic: "History"
+      },
+      {
+        question: "What is Kant’s 'Categorical Imperative' primarily concerned with?",
+        answerOptions: [
+          { answerText: "Consequences of actions", isCorrect: false, rationale: "That is closer to utilitarianism." },
+          { answerText: "Duty and universal moral law", isCorrect: true, rationale: "Kant's categorical imperative emphasizes duty and universal law." },
+          { answerText: "Personal happiness", isCorrect: false, rationale: "This aligns more with hedonism or egoism." },
+          { answerText: "Social contracts", isCorrect: false, rationale: "This is related to Hobbes, Locke, and Rousseau, not Kant." }
+        ],
+        topic: "Ethics"
+      }
+    ];
+
+    let currentQuizData = [...quizData];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let answeredQuestions = [];
+    let selectedAnswerIndex = null;
+
+    const questionElement = document.getElementById('question');
+    const answerButtons = document.getElementById('answer-buttons');
+    const nextBtn = document.getElementById('next-btn');
+    const submitBtn = document.getElementById('submit-btn');
+    const progressBar = document.getElementById('progress-bar');
+    const resultsModal = document.getElementById('results-modal');
+    const scoreElement = document.getElementById('score');
+    const diagnosticElement = document.getElementById('diagnostic');
+    const philosophyLevelElement = document.getElementById('philosophy-level');
+    const studyGuideElement = document.getElementById('study-guide');
+    const restartBtn = document.getElementById('restart-btn');
+    const newQuizBtn = document.getElementById('new-quiz-btn');
+
+    function startQuiz() {
+      currentQuestionIndex = 0;
+      score = 0;
+      answeredQuestions = [];
+      currentQuizData = [...quizData];
+      showQuestion();
+    }
+
+    function showQuestion() {
+      resetState();
+      const currentQuestion = currentQuizData[currentQuestionIndex];
+      questionElement.textContent = currentQuestion.question;
+
+      currentQuestion.answerOptions.forEach((option, index) => {
+        const button = document.createElement('button');
+        button.textContent = option.answerText;
+        button.className = "w-full text-left px-4 py-2 bg-gray-200 rounded hover:bg-gray-300";
+        button.onclick = () => selectAnswer(index);
+        answerButtons.appendChild(button);
+      });
+
+      // FIXED: progress starts at 1/total, not 0%
+      progressBar.style.width = `${((currentQuestionIndex + 1) / currentQuizData.length) * 100}%`;
+    }
+
+    function resetState() {
+      selectedAnswerIndex = null; // FIXED: reset answer each question
+      nextBtn.classList.add('hidden');
+      submitBtn.classList.remove('hidden');
+      submitBtn.disabled = false; // re-enable submit
+      while (answerButtons.firstChild) {
+        answerButtons.removeChild(answerButtons.firstChild);
+      }
+    }
+
+    function selectAnswer(index) {
+      selectedAnswerIndex = index;
+      const buttons = answerButtons.children;
+      for (let i = 0; i < buttons.length; i++) {
+        buttons[i].classList.remove('bg-blue-200');
+      }
+      buttons[index].classList.add('bg-blue-200');
+    }
+
+    function checkAnswer() {
+      if (selectedAnswerIndex === null) return;
+
+      const currentQuestion = currentQuizData[currentQuestionIndex];
+      const selectedAnswer = currentQuestion.answerOptions[selectedAnswerIndex];
+      const buttons = answerButtons.children;
+
+      for (let i = 0; i < buttons.length; i++) {
+        if (currentQuestion.answerOptions[i].isCorrect) {
+          buttons[i].classList.add('bg-green-300');
+        } else if (i === selectedAnswerIndex) {
+          buttons[i].classList.add('bg-red-300');
+        }
+        buttons[i].disabled = true;
+      }
+
+      if (selectedAnswer.isCorrect) {
+        score++;
+      }
+
+      answeredQuestions.push({ questionData: currentQuestion, selectedAnswer, isCorrect: selectedAnswer.isCorrect });
+      submitBtn.classList.add('hidden');
+      submitBtn.disabled = true; // FIXED: prevent double-submit
+      nextBtn.classList.remove('hidden');
+    }
+
+    function showResults() {
+      resultsModal.classList.remove('hidden');
+      scoreElement.textContent = `Your score: ${score} out of ${currentQuizData.length}`;
+
+      let diagnostic = "";
+      if (score === currentQuizData.length) {
+        diagnostic = "Excellent! You mastered all topics.";
+      } else if (score > currentQuizData.length / 2) {
+        diagnostic = "Good job, but review the areas you missed.";
+      } else {
+        diagnostic = "Needs improvement. Focus on the key concepts.";
+      }
+      diagnosticElement.textContent = diagnostic;
+
+      let philosophyLevel = "";
+      if (score === currentQuizData.length) {
+        philosophyLevel = "Philosopher King/Queen!";
+      } else if (score >= currentQuizData.length / 2) {
+        philosophyLevel = "Philosophy Apprentice.";
+      } else {
+        philosophyLevel = "Novice Thinker.";
+      }
+      philosophyLevelElement.textContent = philosophyLevel;
+
+      // Study Guide
+      const topics = {};
+      const seen = new Set();
+      answeredQuestions.forEach(ans => {
+        if (!ans.isCorrect) {
+          if (!topics[ans.questionData.topic]) {
+            topics[ans.questionData.topic] = [];
+          }
+          if (!seen.has(ans.questionData.question)) {
+            topics[ans.questionData.topic].push(
+              `For "${ans.questionData.question}": ${ans.questionData.answerOptions.find(opt => opt.isCorrect).rationale}`
+            );
+            seen.add(ans.questionData.question);
+          }
+        }
+      });
+
+      let guideHTML = "<h3 class='font-bold mb-2'>Study Guide:</h3><ul class='list-disc pl-5'>";
+      for (const [topic, improvements] of Object.entries(topics)) {
+        guideHTML += `<li class='mb-1'><strong>${topic}:</strong><ul class='list-disc pl-5'>${improvements.map(i => `<li>${i}</li>`).join('')}</ul></li>`;
+      }
+      guideHTML += "</ul>";
+      studyGuideElement.innerHTML = guideHTML;
+    }
+
+    submitBtn.addEventListener('click', checkAnswer);
+    nextBtn.addEventListener('click', () => {
+      currentQuestionIndex++;
+      if (currentQuestionIndex < currentQuizData.length) {
+        showQuestion();
+      } else {
+        showResults();
+      }
+    });
+
+    restartBtn.addEventListener('click', () => {
+      resultsModal.classList.add('hidden');
+      startQuiz();
+    });
+
+    newQuizBtn.addEventListener('click', () => {
+      alert("This is where you'd hook into an API to fetch new questions, or shuffle your local quiz pool.");
+      resultsModal.classList.add('hidden');
+      startQuiz();
+    });
+
+    startQuiz();
+  </script>
+</body>
+</html>
